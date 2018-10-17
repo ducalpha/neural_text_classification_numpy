@@ -245,7 +245,7 @@ class Model:
     assert self._delta_W1_L.shape == (self._input_size, self._hidden_size)
 
     self._delta_b1_L = np.average(delta_hp_L, axis=0)
-    assert self._delta_b1_L.shape == (self._hidden_size, )
+    assert self._delta_b1_L.shape == (self._hidden_size,)
 
   def step(self):
     # Descent following the gradients.
@@ -271,16 +271,35 @@ class Trainer:
     input_size = char_vocab.vocab_size * char_seq_len
     num_classes = label_vocab.vocab_size
 
-    # read data into byte
-    self._x_train, self._y_train = TrainDevDatasetReader.read_data(train_path, label_vocab, char_vocab, char_seq_len)
+    self._x_train, self._y_train, self._x_dev, self._y_dev = \
+      self.load_data_maybe_from_disk(label_vocab, char_vocab, char_seq_len)
     assert self._x_train.shape[1] == input_size and self._y_train.shape[1] == num_classes
-    self._x_dev, self._y_dev = TrainDevDatasetReader.read_data(dev_path, label_vocab, char_vocab, char_seq_len)
     assert self._x_dev.shape[1] == input_size and self._y_dev.shape[1] == num_classes
     # shuffle the data
     sklearn.utils.shuffle(self._x_train, self._y_train)
 
     self._model = Model(input_size, hidden_size, num_classes, learning_rate)
     self._batch_size = batch_size
+
+  def dump(self, data, data_archive_file: Path):
+    with data_archive_file.open('wb') as f:
+      pickle.dump(data, f, protocol=4)
+
+  def load_data_maybe_from_disk(self, label_vocab: LabelVocab, char_vocab: CharVocab, char_seq_len: int):
+    # read data into byte
+    data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
+    if data_archive_file.exists():
+      print('Read data from data archive...')
+      with data_archive_file.open('rb') as f:
+        x_train, y_train, x_dev, y_dev = pickle.load(f)
+      print('Done reading data from data archive')
+    else:
+      print('Read data from original data files...')
+      x_train, y_train = TrainDevDatasetReader.read_data(train_path, label_vocab, char_vocab, char_seq_len)
+      x_dev, y_dev = TrainDevDatasetReader.read_data(dev_path, label_vocab, char_vocab, char_seq_len)
+      self.dump((x_train, y_train, x_dev, y_dev), data_archive_file)
+      print('Done reading data from original data files')
+    return x_train, y_train, x_dev, y_dev
 
   def fit(self, num_epochs: int = 3):
     for epoch in range(num_epochs):
@@ -301,7 +320,7 @@ class Trainer:
       # Evaluate on dev set.
       train_accuracy = self._model.evaluate(self._x_train, self._y_train)
       validate_accuracy = self._model.evaluate(self._x_dev, self._y_dev)
-      print('Epoch: {}, train_accuracy: {}, validate_accuracy: {}'. format(epoch, train_accuracy, validate_accuracy))
+      print('Epoch: {}, train_accuracy: {}, validate_accuracy: {}'.format(epoch, train_accuracy, validate_accuracy))
 
   def save_model(self, model_path: str):
     with open(model_path, 'wb') as f:
@@ -342,12 +361,10 @@ class TrainPredictManager:
   def maybe_load_from_files(self, train_path: Path, dev_path: Path, test_path: Path,
                             label_vocab_path: Path, char_vocab_path: Path) -> Tuple[LabelVocab, CharVocab]:
     # TODO: add logic to load/save from/to file if slow
-    print('Creating vocab...')
     label_vocab: LabelVocab = LabelVocab()
     label_vocab.fit(train_path, dev_path)
     char_vocab: CharVocab = CharVocab()
     char_vocab.fit(train_path, dev_path, test_path)
-    print('Done creating vocab')
     return label_vocab, char_vocab
 
   def write_to_file(self, label_pred: List[str]) -> None:
