@@ -15,6 +15,9 @@ class Vocab:
     self._token_to_index: Dict[str, int] = {}
     self._index_to_token: Dict[int, str] = {}
 
+  def tokens_to_indexes(self, tokens: List[str]) -> np.ndarray:
+    return np.array([self._token_to_index[t] for t in tokens])
+
   def _to_one_hot_encoding(self, token: Union[str, List[str]]) -> np.ndarray:
     token_indexes = np.array([self._token_to_index[c] for c in token])
     encoding = np.zeros((len(token), len(self._token_to_index)))
@@ -22,6 +25,12 @@ class Vocab:
     encoding = encoding.flatten()
     assert len(encoding) == len(self._token_to_index) * len(token)
     return encoding
+
+  def to_one_hot_encoding(self, token: str) -> np.ndarray:
+    raise NotImplementedError
+
+  def to_one_hot_encodings(self, tokens: str) -> np.ndarray:
+    return np.array([self.to_one_hot_encoding(t) for t in tokens])
 
   @property
   def vocab_size(self):
@@ -99,10 +108,8 @@ class TrainDevDatasetReader(DatasetReader):
     for label, text in dataset_reader.iter():
       for char_seq in DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len):
         charseq_label_pairs.append((char_seq, label))
-    char_seq_array = np.array([char_vocab.to_one_hot_encoding(char_seq)
-                               for char_seq, _ in charseq_label_pairs])
-    label_array = np.array([label_vocab.to_one_hot_encoding(label)
-                            for _, label in charseq_label_pairs])
+    char_seq_array = [char_seq for char_seq, _ in charseq_label_pairs]
+    label_array = [label for _, label in charseq_label_pairs]
     return char_seq_array, label_array
 
 
@@ -259,24 +266,29 @@ class Model:
     """From probabilities like [0.9, 0.1, 0] to predictions (0, 1, 2)"""
     return np.argmax(probs, axis=1)
 
-  def evaluate(self, x: np.ndarray, y_true_probs: np.ndarray) -> float:
+  def evaluate(self, x: np.ndarray, y_true: np.ndarray) -> float:
     """Return accuracy."""
-    y_true = self.decode(y_true_probs)
     y_prob = self.forward(x)
     y_pred = self.decode(y_prob)
     return sklearn.metrics.accuracy_score(y_true, y_pred)
 
 
 class Trainer:
-  def __init__(self, train_path: Path, dev_path: Path, label_vocab: LabelVocab, char_vocab: CharVocab,
+  def __init__(self, label_vocab: LabelVocab, char_vocab: CharVocab,
                hidden_size: int = 100, learning_rate: float = 0.1, batch_size: int = 1, char_seq_len: int = 5):
-    input_size = char_vocab.vocab_size * char_seq_len
-    num_classes = label_vocab.vocab_size
+    self._label_vocab = label_vocab
+    self._char_vocab = char_vocab
+
+    input_size = self._char_vocab.vocab_size * char_seq_len
+    num_classes = self._label_vocab.vocab_size
 
     self._x_train, self._y_train, self._x_dev, self._y_dev = \
       self.load_data_maybe_from_disk(label_vocab, char_vocab, char_seq_len)
-    assert self._x_train.shape[1] == input_size and self._y_train.shape[1] == num_classes
-    assert self._x_dev.shape[1] == input_size and self._y_dev.shape[1] == num_classes
+    pass
+    assert self._char_vocab.to_one_hot_encoding(self._x_train[0]).shape[0] == input_size \
+           and self._label_vocab.to_one_hot_encoding(self._y_train[0]).shape[0] == num_classes
+    assert self._char_vocab.to_one_hot_encoding(self._x_dev[0]).shape[0] == input_size \
+           and self._label_vocab.to_one_hot_encoding(self._y_dev[0]).shape[0] == num_classes
     # shuffle the data
     self._x_train, self._y_train = sklearn.utils.shuffle(self._x_train, self._y_train)
 
@@ -306,6 +318,10 @@ class Trainer:
   def fit(self, num_epochs: int = 3):
     for epoch in range(num_epochs):
       for i, (x_batch, y_batch) in enumerate(DataHelper.batch_iter(self._x_train, self._y_train, self._batch_size, 1)):
+        # Encoding here to save the memory.
+        x_batch = self._char_vocab.to_one_hot_encodings(x_batch)
+        y_batch = self._label_vocab.to_one_hot_encodings(y_batch)
+
         # Forward.
         y_pred = self._model.forward(x_batch)
 
@@ -320,8 +336,10 @@ class Trainer:
         self._model.step()
 
       # Evaluate on dev set.
-      train_accuracy = self._model.evaluate(self._x_train, self._y_train)
-      validate_accuracy = self._model.evaluate(self._x_dev, self._y_dev)
+      train_accuracy = self._model.evaluate(self._char_vocab.to_one_hot_encodings(self._x_train),
+                                            self._label_vocab.tokens_to_indexes(self._y_train))
+      validate_accuracy = self._model.evaluate(self._char_vocab.to_one_hot_encodings(self._x_dev),
+                                               self._label_vocab.tokens_to_indexes(self._y_dev))
       print('Epoch: {}, train_accuracy: {}, validate_accuracy: {}'.format(epoch, train_accuracy, validate_accuracy))
 
   def save_model(self, model_path: str):
@@ -377,8 +395,7 @@ class TrainPredictManager:
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
     if not test_only:
-      trainer = Trainer(train_path, dev_path, label_vocab, char_vocab, hidden_size=100, learning_rate=0.01,
-                        batch_size=32)
+      trainer = Trainer(label_vocab, char_vocab, hidden_size=100, learning_rate=0.01, batch_size=1024)
       trainer.fit(num_epochs=100)
       trainer.save_model(self.MODEL_PATH)
 
