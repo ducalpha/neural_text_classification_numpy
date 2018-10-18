@@ -3,3 +3,4 @@ __pycache__
 *.zip
 *.swp
 *.pkl
+output*.txt
