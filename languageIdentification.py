@@ -327,7 +327,7 @@ class Trainer:
 
         # Compute the loss.
         loss = self._model.loss(y_batch, y_pred)
-        # print('Epoch: {}, step {}, loss: {}'.format(epoch, i, loss))
+        print('Epoch: {}, step {}, loss: {}'.format(epoch, i, loss))
 
         # Find gradients/losses for each layer.
         self._model.backward(x_batch, y_batch, y_pred)
@@ -395,7 +395,7 @@ class TrainPredictManager:
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
     if not test_only:
-      trainer = Trainer(label_vocab, char_vocab, hidden_size=100, learning_rate=0.01, batch_size=1024)
+      trainer = Trainer(label_vocab, char_vocab, hidden_size=100, learning_rate=0.01, batch_size=1)
       trainer.fit(num_epochs=100)
       trainer.save_model(self.MODEL_PATH)
 
