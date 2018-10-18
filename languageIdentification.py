@@ -331,7 +331,7 @@ class Trainer:
 
   def fit(self, num_epochs: int = 3):
     for epoch in range(num_epochs):
-      print('Training epoch {}'.format(epoch))
+      print('Training epoch {}/{}'.format(epoch, num_epochs))
       for i, (x_batch, y_batch) in enumerate(
           DataHelper.batch_iter(self._x_train, self._y_train, batch_size=self._batch_size)):
         # Encoding here to save the memory.
