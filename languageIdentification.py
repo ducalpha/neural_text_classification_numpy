@@ -154,7 +154,7 @@ class DataHelper:
 
     for _ in range(num_epochs):
       start_index = 0
-      while start_index < len(data):
+      while start_index < len(data) - 1:
         end_index = min(len(data) - 1, start_index + batch_size)
 
         xdata = data[start_index: end_index]
@@ -277,7 +277,7 @@ class Trainer:
     assert self._x_train.shape[1] == input_size and self._y_train.shape[1] == num_classes
     assert self._x_dev.shape[1] == input_size and self._y_dev.shape[1] == num_classes
     # shuffle the data
-    sklearn.utils.shuffle(self._x_train, self._y_train)
+    self._x_train, self._y_train = sklearn.utils.shuffle(self._x_train, self._y_train)
 
     self._model = Model(input_size, hidden_size, num_classes, learning_rate)
     self._batch_size = batch_size
@@ -310,7 +310,7 @@ class Trainer:
 
         # Compute the loss.
         loss = self._model.loss(y_batch, y_pred)
-        print('Epoch: {}, step {}, loss: {}'.format(epoch, i, loss))
+        # print('Epoch: {}, step {}, loss: {}'.format(epoch, i, loss))
 
         # Find gradients/losses for each layer.
         self._model.backward(x_batch, y_batch, y_pred)
@@ -377,8 +377,8 @@ class TrainPredictManager:
 
     if not test_only:
       trainer = Trainer(train_path, dev_path, label_vocab, char_vocab, hidden_size=100, learning_rate=0.01,
-                        batch_size=1024)
-      trainer.fit(num_epochs=3)
+                        batch_size=1)
+      trainer.fit(num_epochs=30)
       trainer.save_model(self.MODEL_PATH)
 
     return
@@ -393,6 +393,7 @@ class TrainPredictManager:
     from pytorch_model import Model
     x_train, y_train = TrainDevDatasetReader.read_data(train_path, label_vocab, char_vocab, char_seq_len=5)
     x_dev, y_dev = TrainDevDatasetReader.read_data(dev_path, label_vocab, char_vocab, char_seq_len=5)
+    x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
     model = Model(input_size=x_train.shape[1], hidden_size=50, num_classes=y_train.shape[1])
     model.fit(x_train, y_train, x_dev, y_dev, num_epoch=500)
 
