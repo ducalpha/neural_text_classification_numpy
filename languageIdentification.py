@@ -351,6 +351,10 @@ class Trainer:
     print('Model: batch size: {}'.format(self._batch_size))
 
   def fit(self, num_epochs: int = 3):
+    train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
+    validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
+    print('Initial train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(train_accuracy, validate_accuracy))
+
     for epoch in range(num_epochs):
       print('Training epoch {}/{}'.format(epoch, num_epochs))
       total_loss = 0
@@ -381,7 +385,9 @@ class Trainer:
       avg_loss = total_loss / len(self._x_train)
       train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
       validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
-      print('Epoch: {}, avg loss: {:.6f}, train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(epoch, avg_loss, train_accuracy, validate_accuracy))
+      print('Epoch: {}, avg loss: {:.6f}, train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(epoch, avg_loss,
+                                                                                                    train_accuracy,
+                                                                                                    validate_accuracy))
 
   def save_model(self, model_path: str):
     with open(model_path, 'wb') as f:
