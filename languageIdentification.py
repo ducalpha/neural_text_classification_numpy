@@ -1,4 +1,4 @@
-__author__ = 'Duc Bui'
+__author__ = 'Duc Bui (ducbui)'
 
 from pathlib import Path
 import sys
@@ -9,15 +9,19 @@ import sklearn.metrics
 import pickle
 from collections import Counter
 
+DEFAULT_ENCODING = 'ISO-8859-1'
+
+
 def progress(count, total, status=''):
-    bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
+  bar_len = 60
+  filled_len = int(round(bar_len * count / float(total)))
 
-    percents = round(100.0 * count / float(total), 1)
-    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+  percents = round(100.0 * count / float(total), 1)
+  bar = '=' * filled_len + '-' * (bar_len - filled_len)
 
-    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
-    sys.stdout.flush()  # As suggested by Rom Ruben (see: http://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console/27871113#comment50529068_27871113)
+  sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+  sys.stdout.flush()  # As suggested by Rom Ruben (see: http://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console/27871113#comment50529068_27871113)
+
 
 class Vocab:
   def __init__(self):
@@ -90,7 +94,7 @@ class LabelVocab(Vocab):
 
 
 class DatasetReader:
-  def __init__(self, path: Path, encoding='ISO-8859-1'):
+  def __init__(self, path: Path, encoding: str = DEFAULT_ENCODING):
     self._path = path
     self._encoding = encoding
 
@@ -134,9 +138,7 @@ class TestDatasetReader(DatasetReader):
     """Return ndarray of char sequences of each line."""
     dataset_reader = TestDatasetReader(file_path)
     for text in dataset_reader.iter():
-      char_sequence_array = np.array([char_vocab.to_one_hot_encoding(char_seq)
-                                      for char_seq in
-                                      DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len)])
+      char_sequence_array = list(DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len))
       yield char_sequence_array
 
 
@@ -307,6 +309,7 @@ class Trainer:
 
     self._model = Model(input_size, hidden_size, num_classes, learning_rate)
     self._batch_size = batch_size
+    print('Model: batch size: {}'.format(self._batch_size))
 
   def dump(self, data, data_archive_file: Path):
     with data_archive_file.open('wb') as f:
@@ -315,8 +318,8 @@ class Trainer:
   def load_data_maybe_from_disk(self, label_vocab: LabelVocab, char_vocab: CharVocab, char_seq_len: int):
     # read data into byte
     # data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
-    # data_archive_file = Path('data.pkl')
-    if False and data_archive_file.exists(): # disabled because it's fast to read the data.
+    data_archive_file = Path('data.pkl')
+    if False and data_archive_file.exists():  # disabled because it's fast to read the data.
       print('Read data from data archive...')
       with data_archive_file.open('rb') as f:
         x_train, y_train, x_dev, y_dev = pickle.load(f)
@@ -374,15 +377,16 @@ class Predictor:
     with open(model_path, 'rb') as f:
       self._model = pickle.load(f)
 
-  def predict(self, test_file_path) -> List[str]:
+  def predict(self, test_file_path: Path) -> List[str]:
     line_predictions = []
     for line_batch in TestDatasetReader.read_line(test_file_path, char_vocab=self._char_vocab):
       # line_batch contains an array of
+      line_batch = self._char_vocab.to_one_hot_encodings(line_batch)
       probs = self._model.forward(line_batch)
-      assert probs.shape == (self._label_vocab.vocab_size, len(line_batch))
+      assert probs.shape == (len(line_batch), self._label_vocab.vocab_size)
       preds = self._decode(self._model.decode(probs))
       # preds: should be ['ENGLISH', 'ENGLISH', 'FRENCH']
-      pred = Counter(preds).most_common()
+      pred = Counter(preds).most_common()[0][0]
       line_predictions.append(pred)
     return line_predictions
 
@@ -393,7 +397,7 @@ class Predictor:
 
 class TrainPredictManager:
   MODEL_PATH = 'model.pkl'
-  OUTPUT_PATH = 'languageIdentificationPart1.output'
+  PREDICT_OUTPUT_PATH = Path('languageIdentificationPart1.output')
 
   def maybe_load_from_files(self, train_path: Path, dev_path: Path, test_path: Path,
                             label_vocab_path: Path, char_vocab_path: Path) -> Tuple[LabelVocab, CharVocab]:
@@ -403,11 +407,18 @@ class TrainPredictManager:
     char_vocab.fit(train_path, dev_path, test_path)
     return label_vocab, char_vocab
 
-  def write_to_file(self, label_pred: List[str]) -> None:
-    with open(self.OUTPUT_PATH, 'w') as f:
-      f.writelines('{} {}'.format(i, label) for i, label in enumerate(label_pred))
+  def write_to_file(self, label_pred: List[str], output_file_path: Path) -> None:
+    with output_file_path.open('w') as f:
+      f.writelines('{} {}\n'.format(i + 1, label) for i, label in enumerate(label_pred))
 
-  def run(self, train_path, dev_path, test_path, test_only=False):
+  def try_to_evaluate_test_result(self, test_path, pred_path):
+    evaluation_module = 'evaluate_test_output'
+    evaluation_script_file = Path('{}.py'.format(evaluation_module))
+    if evaluation_script_file.exists():
+      from evaluate_test_output import compute_metrics
+      compute_metrics(test_path, pred_path)
+
+  def run(self, train_path: Path, dev_path: Path, test_path: Path, test_only=False):
     label_vocab, char_vocab = self.maybe_load_from_files(train_path, dev_path, test_path,
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
@@ -416,11 +427,12 @@ class TrainPredictManager:
       trainer.fit(num_epochs=4)
       trainer.save_model(self.MODEL_PATH)
 
-    return
     predictor = Predictor(label_vocab, char_vocab)
+
     predictor.from_archive(self.MODEL_PATH)
     label_pred = predictor.predict(test_path)
-    self.write_to_file(label_pred)
+    self.write_to_file(label_pred, self.PREDICT_OUTPUT_PATH)
+    self.try_to_evaluate_test_result(test_path.parent / 'test_solutions', self.PREDICT_OUTPUT_PATH)
 
   def run_with_torch(self, train_path, dev_path, test_path):
     label_vocab, char_vocab = self.maybe_load_from_files(train_path, dev_path, test_path,
