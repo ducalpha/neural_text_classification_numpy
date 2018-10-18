@@ -301,7 +301,8 @@ class Trainer:
 
   def load_data_maybe_from_disk(self, label_vocab: LabelVocab, char_vocab: CharVocab, char_seq_len: int):
     # read data into byte
-    data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
+    # data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
+    data_archive_file = Path('data.pkl')
     if data_archive_file.exists():
       print('Read data from data archive...')
       with data_archive_file.open('rb') as f:
@@ -395,7 +396,7 @@ class TrainPredictManager:
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
     if not test_only:
-      trainer = Trainer(label_vocab, char_vocab, hidden_size=100, learning_rate=0.01, batch_size=1024)
+      trainer = Trainer(label_vocab, char_vocab, hidden_size=100, learning_rate=0.01, batch_size=1)
       trainer.fit(num_epochs=100)
       trainer.save_model(self.MODEL_PATH)
 
