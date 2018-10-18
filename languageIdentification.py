@@ -148,7 +148,7 @@ def softmax_grad(s):
 class DataHelper:
   @staticmethod
   def batch_iter(data: Union[np.ndarray, List[Any]], labels: Union[np.ndarray, List[Any]],
-                 batch_size: int, num_epochs: int) -> Tuple[Iterable[Any], Iterable[Any]]:
+                 batch_size: int, num_epochs: int = 1) -> Tuple[Iterable[Any], Iterable[Any]]:
     """
     A mini-batch iterator to generate mini-batches for training neural network
     :param data: a list of sentences. each sentence is a vector of integers
@@ -266,11 +266,15 @@ class Model:
     """From probabilities like [0.9, 0.1, 0] to predictions (0, 1, 2)"""
     return np.argmax(probs, axis=1)
 
-  def evaluate(self, x: np.ndarray, y_true: np.ndarray) -> float:
+  def evaluate(self, char_vocab: CharVocab, label_vocab: LabelVocab, x: List[str], y_true: List[str]) -> float:
     """Return accuracy."""
-    y_prob = self.forward(x)
-    y_pred = self.decode(y_prob)
-    return sklearn.metrics.accuracy_score(y_true, y_pred)
+    num_corrects = 0
+    for x_batch, y_batch_true in DataHelper.batch_iter(x, y_true, batch_size=64):
+      y_batch_prob = self.forward(char_vocab.to_one_hot_encodings(x_batch))
+      y_batch_pred = self.decode(y_batch_prob)
+      num_corrects += sum(y_batch_pred == label_vocab.tokens_to_indexes(y_batch_true))
+    # return sklearn.metrics.accuracy_score(y_true, y_pred)
+    return num_corrects / len(x)
 
 
 class Trainer:
@@ -301,7 +305,8 @@ class Trainer:
 
   def load_data_maybe_from_disk(self, label_vocab: LabelVocab, char_vocab: CharVocab, char_seq_len: int):
     # read data into byte
-    data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
+    # data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
+    data_archive_file = Path('data.pkl')
     if data_archive_file.exists():
       print('Read data from data archive...')
       with data_archive_file.open('rb') as f:
@@ -317,7 +322,8 @@ class Trainer:
 
   def fit(self, num_epochs: int = 3):
     for epoch in range(num_epochs):
-      for i, (x_batch, y_batch) in enumerate(DataHelper.batch_iter(self._x_train, self._y_train, self._batch_size, 1)):
+      for i, (x_batch, y_batch) in enumerate(
+          DataHelper.batch_iter(self._x_train, self._y_train, batch_size=self._batch_size)):
         # Encoding here to save the memory.
         x_batch = self._char_vocab.to_one_hot_encodings(x_batch)
         y_batch = self._label_vocab.to_one_hot_encodings(y_batch)
@@ -336,10 +342,8 @@ class Trainer:
         self._model.step()
 
       # Evaluate on dev set.
-      train_accuracy = self._model.evaluate(self._char_vocab.to_one_hot_encodings(self._x_train),
-                                            self._label_vocab.tokens_to_indexes(self._y_train))
-      validate_accuracy = self._model.evaluate(self._char_vocab.to_one_hot_encodings(self._x_dev),
-                                               self._label_vocab.tokens_to_indexes(self._y_dev))
+      train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
+      validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
       print('Epoch: {}, train_accuracy: {}, validate_accuracy: {}'.format(epoch, train_accuracy, validate_accuracy))
 
   def save_model(self, model_path: str):
