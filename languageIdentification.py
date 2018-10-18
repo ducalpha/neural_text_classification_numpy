@@ -261,7 +261,8 @@ class Model:
   def evaluate(self, x: np.ndarray, y_true_probs: np.ndarray) -> float:
     """Return accuracy."""
     y_true = self.decode(y_true_probs)
-    y_pred = self.decode(self.forward(x))
+    y_prob = self.forward(x)
+    y_pred = self.decode(y_prob)
     return sklearn.metrics.accuracy_score(y_true, y_pred)
 
 
@@ -360,7 +361,6 @@ class TrainPredictManager:
 
   def maybe_load_from_files(self, train_path: Path, dev_path: Path, test_path: Path,
                             label_vocab_path: Path, char_vocab_path: Path) -> Tuple[LabelVocab, CharVocab]:
-    # TODO: add logic to load/save from/to file if slow
     label_vocab: LabelVocab = LabelVocab()
     label_vocab.fit(train_path, dev_path)
     char_vocab: CharVocab = CharVocab()
