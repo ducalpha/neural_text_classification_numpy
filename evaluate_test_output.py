@@ -4,23 +4,22 @@ import sys
 from pathlib import Path
 import sklearn
 
-def read_output_file(output_file: Path):
+def read_output_file(output_file: Path, encoding: str = 'utf-8'):
   outputs = []
-  with output_file.open() as f:
+  with output_file.open(encoding=encoding) as f:
     for line in f:
       ith, label = line.split()
       outputs.append(label)
-      assert ith == len(outputs)
+      assert int(ith) == len(outputs)
   return outputs
 
 def compute_metrics(expected_output_file: Path, predicted_output_file: Path):
-  expected_values = read_output_file(expected_output_file)
+  expected_values = read_output_file(expected_output_file, encoding='ISO-8859-1')
+  expected_values = [v.upper() for v in expected_values]
   predicted_values = read_output_file(predicted_output_file)
   assert len(expected_values) == len(predicted_values)
-  precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(expected_values, predicted_values)
-  assert support == len(expected_values)
-  print('Support: {}'.format(support))
-  print('Precision | recall | F1: {:.4f} {:.4f} {:.4f}'.format(precision, recall, fscore))
+  accuracy = sklearn.metrics.accuracy_score(expected_values, predicted_values)
+  print('Testing accuracy: {}'.format(accuracy))
 
 if __name__ == '__main__':
   if len(sys.argv) < 2:
