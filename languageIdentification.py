@@ -29,21 +29,10 @@ class Vocab:
     self._index_to_token: Dict[int, str] = {}
 
   def tokens_to_indexes(self, tokens: List[str]) -> np.ndarray:
-    return np.array([self._token_to_index[t] for t in tokens])
-
-  def _to_one_hot_encoding(self, token: Union[str, List[str]]) -> np.ndarray:
-    token_indexes = np.array([self._token_to_index[c] for c in token])
-    encoding = np.zeros((len(token), len(self._token_to_index)))
-    encoding[np.arange(len(token)), token_indexes] = 1
-    encoding = encoding.flatten()
-    assert len(encoding) == len(self._token_to_index) * len(token)
-    return encoding
-
-  def to_one_hot_encoding(self, token: str) -> np.ndarray:
     raise NotImplementedError
 
-  def to_one_hot_encodings(self, tokens: str) -> np.ndarray:
-    return np.array([self.to_one_hot_encoding(t) for t in tokens])
+  def to_one_hot_encodings(self, tokens: List[str]) -> np.ndarray:
+    raise NotImplementedError
 
   @property
   def vocab_size(self):
@@ -75,8 +64,18 @@ class CharVocab(Vocab):
           self._token_to_index[c] = len(self._token_to_index)
     # print(self._token_to_index)
 
-  def to_one_hot_encoding(self, token: str) -> np.ndarray:
-    return super()._to_one_hot_encoding(token)
+  def tokens_to_indexes(self, tokens: List[str]) -> np.ndarray:
+    return np.array([[self._token_to_index[c] for c in token] for token in tokens])
+
+  def indexes_to_one_hot_encoding(self, token_indexes: np.ndarray) -> np.ndarray:
+    encoding = np.eye(len(self._token_to_index))[token_indexes]
+    return encoding.reshape((encoding.shape[0], encoding.shape[1] * encoding.shape[2]))
+
+  def to_one_hot_encodings(self, tokens: List[str]) -> np.ndarray:
+    token_indexes: np.ndarray = self.tokens_to_indexes(tokens)
+    encoding = self.indexes_to_one_hot_encoding(token_indexes)
+    assert encoding.shape == (len(tokens), len(self._token_to_index) * len(tokens[0]))
+    return encoding
 
 
 class LabelVocab(Vocab):
@@ -87,10 +86,18 @@ class LabelVocab(Vocab):
       for label, _ in TrainDevDatasetReader(path).iter():
         if label not in self._token_to_index:
           self._token_to_index[label] = len(self._token_to_index)
-    # print(self._token_to_index)
 
-  def to_one_hot_encoding(self, token: str) -> np.ndarray:
-    return super()._to_one_hot_encoding([token])
+  def tokens_to_indexes(self, tokens: List[str]) -> np.ndarray:
+    return np.array([self._token_to_index[token] for token in tokens])
+
+  def indexes_to_one_hot_encodings(self, token_indexes: np.ndarray) -> np.ndarray:
+    return np.eye(len(self._token_to_index))[token_indexes]
+
+  def to_one_hot_encodings(self, tokens: List[str]) -> np.ndarray:
+    token_indexes: np.ndarray = self.tokens_to_indexes(tokens)
+    encoding = self.indexes_to_one_hot_encodings(token_indexes)
+    assert encoding.shape == (len(tokens), len(self._token_to_index))
+    return encoding
 
 
 class DatasetReader:
@@ -103,6 +110,28 @@ class DatasetReader:
     for i in range(len(text) - char_seq_len):
       yield text[i:i + char_seq_len]
 
+  # def dump(self, data, data_archive_file: Path):
+  # with data_archive_file.open('wb') as f:
+  # pickle.dump(data, f, protocol=4)
+
+  @staticmethod
+  def load_data_maybe_from_disk(train_path: Path, dev_path: Path, char_seq_len: int):
+    # read data into byte
+    # data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
+    data_archive_file = Path('data.pkl')
+    if False and data_archive_file.exists():  # disabled because it's fast to read the data.
+      print('Read data from data archive...')
+      with data_archive_file.open('rb') as f:
+        data_train, label_train, data_dev, label_dev = pickle.load(f)
+      print('Done reading data from data archive')
+    else:
+      print('Read data from original data files...')
+      data_train, label_train = TrainDevDatasetReader.read_data(train_path, char_seq_len)
+      data_dev, label_dev = TrainDevDatasetReader.read_data(dev_path, char_seq_len)
+      # self.dump((data_train, label_train, data_dev, label_dev), data_archive_file)
+      print('Done reading data from original data files')
+    return data_train, label_train, data_dev, label_dev
+
 
 class TrainDevDatasetReader(DatasetReader):
   def iter(self) -> Tuple[str, str]:
@@ -114,8 +143,8 @@ class TrainDevDatasetReader(DatasetReader):
           yield label, text
 
   @staticmethod
-  def read_data(file_path: Path, label_vocab: LabelVocab, char_vocab: CharVocab,
-                char_seq_len: int) -> Tuple[np.ndarray, np.ndarray]:
+  def read_data(file_path: Path, char_seq_len: int) -> Tuple[List[str], List[str]]:
+    """Return 5-char-seqs and labels lists: ['abc', 'bcd'], ['ENGLISH', 'FRENCH']"""
     dataset_reader = TrainDevDatasetReader(file_path)
     charseq_label_pairs: List[Tuple[str, str]] = []
     for label, text in dataset_reader.iter():
@@ -277,19 +306,19 @@ class Model:
     """From probabilities like [0.9, 0.1, 0] to predictions (0, 1, 2)"""
     return np.argmax(probs, axis=1)
 
-  def evaluate(self, char_vocab: CharVocab, label_vocab: LabelVocab, x: List[str], y_true: List[str]) -> float:
+  def evaluate(self, char_vocab: CharVocab, label_vocab: LabelVocab, x: np.ndarray, y_true: np.ndarray) -> float:
     """Return accuracy."""
     num_corrects = 0
     for x_batch, y_batch_true in DataHelper.batch_iter(x, y_true, batch_size=64):
-      y_batch_prob = self.forward(char_vocab.to_one_hot_encodings(x_batch))
+      y_batch_prob = self.forward(x_batch)
       y_batch_pred = self.decode(y_batch_prob)
-      num_corrects += sum(y_batch_pred == label_vocab.tokens_to_indexes(y_batch_true))
+      num_corrects += sum(y_batch_pred == y_batch_true)
     # return sklearn.metrics.accuracy_score(y_true, y_pred)
     return num_corrects / len(x)
 
 
 class Trainer:
-  def __init__(self, label_vocab: LabelVocab, char_vocab: CharVocab,
+  def __init__(self, label_vocab: LabelVocab, char_vocab: CharVocab, train_path: Path, dev_path: Path,
                hidden_size: int = 100, learning_rate: float = 0.1, batch_size: int = 1, char_seq_len: int = 5):
     self._label_vocab = label_vocab
     self._char_vocab = char_vocab
@@ -297,56 +326,47 @@ class Trainer:
     input_size = self._char_vocab.vocab_size * char_seq_len
     num_classes = self._label_vocab.vocab_size
 
-    self._x_train, self._y_train, self._x_dev, self._y_dev = \
-      self.load_data_maybe_from_disk(label_vocab, char_vocab, char_seq_len)
-    pass
-    assert self._char_vocab.to_one_hot_encoding(self._x_train[0]).shape[0] == input_size \
-           and self._label_vocab.to_one_hot_encoding(self._y_train[0]).shape[0] == num_classes
-    assert self._char_vocab.to_one_hot_encoding(self._x_dev[0]).shape[0] == input_size \
-           and self._label_vocab.to_one_hot_encoding(self._y_dev[0]).shape[0] == num_classes
-    # shuffle the data
-    self._x_train, self._y_train = sklearn.utils.shuffle(self._x_train, self._y_train)
+    data_train, label_train, data_dev, label_dev = \
+      DatasetReader.load_data_maybe_from_disk(train_path, dev_path, char_seq_len)
+    # shuffle the train data
+    data_train, label_train = sklearn.utils.shuffle(data_train, label_train)
+
+    self._x_train, self._y_train = self._char_vocab.tokens_to_indexes(data_train), \
+                                   self._label_vocab.tokens_to_indexes(label_train)
+    self._x_dev, self._y_dev = self._char_vocab.tokens_to_indexes(data_dev), \
+                               self._label_vocab.tokens_to_indexes(label_dev)
+    # keep cached encoding as encoding x is too slow.
+    self._x_train = self._char_vocab.indexes_to_one_hot_encoding(self._x_train)
+    self._y_train_one_hot_encoded = self._label_vocab.indexes_to_one_hot_encodings(self._y_train)
+    self._x_dev = self._char_vocab.indexes_to_one_hot_encoding(self._x_dev)
+    self._y_dev_one_hot_encoded = self._label_vocab.indexes_to_one_hot_encodings(self._y_dev)
+    # self._y_train = self._label_vocab.indexes_to_one_hot_encoding(self._y_train)
+    # assert self._char_vocab.to_one_hot_encodings([self._x_train[0]]).shape[0] == input_size \
+    # and self._label_vocab.to_one_hot_encodings([self._y_train[0]]).shape[0] == num_classes
+    # assert self._char_vocab.to_one_hot_encodings([self._x_dev[0]]).shape[0] == input_size \
+    # and self._label_vocab.to_one_hot_encodings([self._y_dev[0]]).shape[0] == num_classes
 
     self._model = Model(input_size, hidden_size, num_classes, learning_rate)
     self._batch_size = batch_size
     print('Model: batch size: {}'.format(self._batch_size))
 
-  def dump(self, data, data_archive_file: Path):
-    with data_archive_file.open('wb') as f:
-      pickle.dump(data, f, protocol=4)
-
-  def load_data_maybe_from_disk(self, label_vocab: LabelVocab, char_vocab: CharVocab, char_seq_len: int):
-    # read data into byte
-    # data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
-    data_archive_file = Path('data.pkl')
-    if False and data_archive_file.exists():  # disabled because it's fast to read the data.
-      print('Read data from data archive...')
-      with data_archive_file.open('rb') as f:
-        x_train, y_train, x_dev, y_dev = pickle.load(f)
-      print('Done reading data from data archive')
-    else:
-      print('Read data from original data files...')
-      x_train, y_train = TrainDevDatasetReader.read_data(train_path, label_vocab, char_vocab, char_seq_len)
-      x_dev, y_dev = TrainDevDatasetReader.read_data(dev_path, label_vocab, char_vocab, char_seq_len)
-      # self.dump((x_train, y_train, x_dev, y_dev), data_archive_file)
-      print('Done reading data from original data files')
-    return x_train, y_train, x_dev, y_dev
-
   def fit(self, num_epochs: int = 3):
     for epoch in range(num_epochs):
       print('Training epoch {}/{}'.format(epoch, num_epochs))
+      total_loss = 0
       for i, (x_batch, y_batch) in enumerate(
-          DataHelper.batch_iter(self._x_train, self._y_train, batch_size=self._batch_size)):
+          DataHelper.batch_iter(self._x_train, self._y_train_one_hot_encoded, batch_size=self._batch_size)):
         # Encoding here to save the memory.
-        x_batch = self._char_vocab.to_one_hot_encodings(x_batch)
-        y_batch = self._label_vocab.to_one_hot_encodings(y_batch)
+        # x_batch = self._char_vocab.to_one_hot_encodings(x_batch)
+        # y_batch = self._label_vocab.to_one_hot_encodings(y_batch)
 
         # Forward.
         y_pred = self._model.forward(x_batch)
 
         # Compute the loss.
         loss = self._model.loss(y_batch, y_pred)
-        # print('Epoch: {}, step {}, loss: {}'.format(epoch, i, loss))
+        total_loss += loss
+        # print('Epoch: {}, step {}, loss: {:.6f}'.format(epoch, i, loss))
 
         # Find gradients/losses for each layer.
         self._model.backward(x_batch, y_batch, y_pred)
@@ -358,9 +378,10 @@ class Trainer:
         progress(i, len(self._x_train))
 
       # Evaluate on dev set.
+      avg_loss = total_loss / len(self._x_train)
       train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
       validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
-      print('Epoch: {}, train_accuracy: {}, validate_accuracy: {}'.format(epoch, train_accuracy, validate_accuracy))
+      print('Epoch: {}, avg loss: {:.6f}, train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(epoch, avg_loss, train_accuracy, validate_accuracy))
 
   def save_model(self, model_path: str):
     with open(model_path, 'wb') as f:
@@ -423,7 +444,8 @@ class TrainPredictManager:
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
     if not test_only:
-      trainer = Trainer(label_vocab, char_vocab, hidden_size=100, learning_rate=0.01, batch_size=1)
+      trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=100, learning_rate=0.01,
+                        batch_size=1)
       trainer.fit(num_epochs=4)
       trainer.save_model(self.MODEL_PATH)
 
