@@ -9,6 +9,15 @@ import sklearn.metrics
 import pickle
 from collections import Counter
 
+def progress(count, total, status=''):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+    sys.stdout.flush()  # As suggested by Rom Ruben (see: http://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console/27871113#comment50529068_27871113)
 
 class Vocab:
   def __init__(self):
@@ -322,6 +331,7 @@ class Trainer:
 
   def fit(self, num_epochs: int = 3):
     for epoch in range(num_epochs):
+      print('Training epoch {}'.format(epoch))
       for i, (x_batch, y_batch) in enumerate(
           DataHelper.batch_iter(self._x_train, self._y_train, batch_size=self._batch_size)):
         # Encoding here to save the memory.
@@ -340,6 +350,9 @@ class Trainer:
 
         # Descent.
         self._model.step()
+
+        # Progress bar.
+        progress(i, len(self._x_train))
 
       # Evaluate on dev set.
       train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
@@ -400,7 +413,7 @@ class TrainPredictManager:
 
     if not test_only:
       trainer = Trainer(label_vocab, char_vocab, hidden_size=100, learning_rate=0.01, batch_size=1)
-      trainer.fit(num_epochs=100)
+      trainer.fit(num_epochs=4)
       trainer.save_model(self.MODEL_PATH)
 
     return
