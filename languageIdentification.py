@@ -168,6 +168,7 @@ class DataHelper:
 class Model:
   def __init__(self, input_size: int, hidden_size: int, num_classes: int, learning_rate: float = 0.1):
     # Weights
+    np.random.seed(1024)
     self._W1: np.ndarray = np.random.random((input_size, hidden_size))  # each weight for 1 input = 1 column
     self._W2: np.ndarray = np.random.random((hidden_size, num_classes))
     self._b1: np.ndarray = np.random.random(hidden_size)
@@ -377,8 +378,8 @@ class TrainPredictManager:
 
     if not test_only:
       trainer = Trainer(train_path, dev_path, label_vocab, char_vocab, hidden_size=100, learning_rate=0.01,
-                        batch_size=1)
-      trainer.fit(num_epochs=30)
+                        batch_size=32)
+      trainer.fit(num_epochs=100)
       trainer.save_model(self.MODEL_PATH)
 
     return
