@@ -343,7 +343,7 @@ class Trainer:
 
         # Compute the loss.
         loss = self._model.loss(y_batch, y_pred)
-        print('Epoch: {}, step {}, loss: {}'.format(epoch, i, loss))
+        # print('Epoch: {}, step {}, loss: {}'.format(epoch, i, loss))
 
         # Find gradients/losses for each layer.
         self._model.backward(x_batch, y_batch, y_pred)
