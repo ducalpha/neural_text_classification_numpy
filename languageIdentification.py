@@ -315,8 +315,8 @@ class Trainer:
   def load_data_maybe_from_disk(self, label_vocab: LabelVocab, char_vocab: CharVocab, char_seq_len: int):
     # read data into byte
     # data_archive_file = Path.home() / 'tmp' / Path('data.pkl')
-    data_archive_file = Path('data.pkl')
-    if data_archive_file.exists():
+    # data_archive_file = Path('data.pkl')
+    if False and data_archive_file.exists(): # disabled because it's fast to read the data.
       print('Read data from data archive...')
       with data_archive_file.open('rb') as f:
         x_train, y_train, x_dev, y_dev = pickle.load(f)
@@ -325,7 +325,7 @@ class Trainer:
       print('Read data from original data files...')
       x_train, y_train = TrainDevDatasetReader.read_data(train_path, label_vocab, char_vocab, char_seq_len)
       x_dev, y_dev = TrainDevDatasetReader.read_data(dev_path, label_vocab, char_vocab, char_seq_len)
-      self.dump((x_train, y_train, x_dev, y_dev), data_archive_file)
+      # self.dump((x_train, y_train, x_dev, y_dev), data_archive_file)
       print('Done reading data from original data files')
     return x_train, y_train, x_dev, y_dev
 
