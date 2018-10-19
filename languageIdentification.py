@@ -494,7 +494,7 @@ class TrainPredictManager:
     label_vocab, char_vocab = self.maybe_load_from_files(train_path, dev_path, test_path,
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
-    params = [(100, 0.1)] if not hypertune else [(50, 0.1), (200, 0.1), (300, 0.1), (200, 0.01), (300, 0.01)]
+    params = [(100, 0.1)] if not hypertune else [(50, 0.1), (150, 0.1), (200, 0.1), (150, 0.01), (200, 0.01)]
 
     for hidden_size, learning_rate in params:
       if not test_only:
