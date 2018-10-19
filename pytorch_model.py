@@ -63,6 +63,7 @@ class Model:
   def __init__(self, input_size: int, hidden_size: int, num_classes: int, batch_size: int = 1):
     self._model = nn.Sequential(nn.Linear(input_size, hidden_size),
                                 nn.Sigmoid(), nn.Linear(hidden_size, num_classes), nn.Softmax(dim=1))
+    self._model.cuda()
     self._criterion = nn.MSELoss()
     self._optimizer = torch.optim.SGD(self._model.parameters(), lr=0.01)
     self._batch_size = batch_size
@@ -86,23 +87,33 @@ class Model:
     self._model.eval()
     with torch.no_grad():
       probs = self._model.forward(X)
-      preds = torch.max(probs, 1)[1].numpy()
-      y = torch.max(y, 1)[1].numpy()
+      preds = torch.max(probs, 1)[1].cpu().numpy()
+      y = torch.max(y, 1)[1].cpu().numpy()
       accuracy = accuracy_score(y, preds)
       return accuracy
 
   def fit(self, X_train: np.ndarray, y_train: np.ndarray,
           X_dev: Optional[np.ndarray] = None, y_dev: Optional[np.ndarray] = None, num_epoch: int = 50) -> None:
-    X_train, y_train = torch.from_numpy(X_train).float(), torch.from_numpy(y_train).float()
-    X_dev, y_dev = torch.from_numpy(X_dev).float(), torch.from_numpy(y_dev).float()
+    X_train, y_train = torch.from_numpy(X_train).float().cuda(), torch.from_numpy(y_train).float().cuda()
+    X_dev, y_dev = torch.from_numpy(X_dev).float().cuda(), torch.from_numpy(y_dev).float().cuda()
 
     # Batch is the whole data.
     for epoch in range(num_epoch):
+      total_loss = 0
       for i, (x_batch, y_batch) in enumerate(DataHelper.batch_iter(X_train, y_train, self._batch_size, 1)):
         loss = self._train(x_batch, y_batch)
-        # print('Epoch: {}, step: {}, loss: {}'.format(epoch, i, loss))
-      accuracy = self._eval(X_dev, y_dev)
-      print('Epoch: {}, eval_accuracy: {}'.format(epoch, accuracy))
+        total_loss += loss
+        step = i * len(x_batch)
+        if step % 10000 == 0:
+          print('Epoch: {}, step: {}/{}, loss: {}'.format(epoch, step, len(X_train), loss))
+
+      train_accuracy = self._eval(X_train, y_train)
+      validate_accuracy = self._eval(X_dev, y_dev)
+      #print('train accuracy', train_accuracy)
+      #print('validate accuracy', validate_accuracy)
+      avg_loss = total_loss / len(X_train)
+      print('Epoch: {}, avg loss: {}, train_accuracy: {}, validate_accuracy: {}'.
+          format(epoch, avg_loss, train_accuracy, validate_accuracy))
 
 
 def test_with_generated_data():

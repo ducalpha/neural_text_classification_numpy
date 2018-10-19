@@ -460,11 +460,23 @@ class TrainPredictManager:
     label_vocab, char_vocab = self.maybe_load_from_files(train_path, dev_path, test_path,
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
     from pytorch_model import Model
-    x_train, y_train = TrainDevDatasetReader.read_data(train_path, label_vocab, char_vocab, char_seq_len=5)
-    x_dev, y_dev = TrainDevDatasetReader.read_data(dev_path, label_vocab, char_vocab, char_seq_len=5)
-    x_train, y_train = sklearn.utils.shuffle(x_train, y_train)
-    model = Model(input_size=x_train.shape[1], hidden_size=50, num_classes=y_train.shape[1])
-    model.fit(x_train, y_train, x_dev, y_dev, num_epoch=500)
+    # read data.
+    data_train, label_train, data_dev, label_dev = \
+      DatasetReader.load_data_maybe_from_disk(train_path, dev_path, char_seq_len=5)
+    # shuffle the train data
+    data_train, label_train = sklearn.utils.shuffle(data_train, label_train)
+
+    x_train, y_train = char_vocab.tokens_to_indexes(data_train), label_vocab.tokens_to_indexes(label_train)
+    x_dev, y_dev = char_vocab.tokens_to_indexes(data_dev), label_vocab.tokens_to_indexes(label_dev)
+
+    # keep cached encoding as encoding x is too slow.
+    x_train = char_vocab.indexes_to_one_hot_encoding(x_train)
+    y_train_one_hot_encoded = label_vocab.indexes_to_one_hot_encodings(y_train)
+    x_dev = char_vocab.indexes_to_one_hot_encoding(x_dev)
+    y_dev_one_hot_encoded = label_vocab.indexes_to_one_hot_encodings(y_dev)
+
+    model = Model(input_size=x_train.shape[1], hidden_size=50, num_classes=y_train_one_hot_encoded.shape[1], batch_size=1)
+    model.fit(x_train, y_train_one_hot_encoded, x_dev, y_dev_one_hot_encoded, num_epoch=4)
 
 
 if __name__ == '__main__':
