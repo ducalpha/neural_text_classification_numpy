@@ -83,11 +83,13 @@ class CharVocab(Vocab):
     return np.array([[self._token_to_index[c] for c in token] for token in tokens])
 
   def indexes_to_one_hot_encoding(self, token_indexes: np.ndarray) -> np.ndarray:
+    assert len(token_indexes) > 0
     encoding = np.eye(len(self._token_to_index))[token_indexes]
     return encoding.reshape((encoding.shape[0], encoding.shape[1] * encoding.shape[2]))
 
   def to_one_hot_encodings(self, tokens: List[str]) -> np.ndarray:
     token_indexes: np.ndarray = self.tokens_to_indexes(tokens)
+    assert len(token_indexes) > 0
     encoding = self.indexes_to_one_hot_encoding(token_indexes)
     assert encoding.shape == (len(tokens), len(self._token_to_index) * len(tokens[0]))
     return encoding
@@ -157,6 +159,8 @@ class TrainDevDatasetReader(DatasetReader):
           label, text = parts
           if need_clean_text:
             text = clean_text(text)
+          if not text:
+            continue
           yield label, text
 
   @staticmethod
@@ -195,6 +199,8 @@ class TestDatasetReader(DatasetReader):
     for text in dataset_reader.iter():
       if need_clean_text:
         text = clean_text(text)
+      if not text:
+        continue
       yield list(DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len))
 
 
