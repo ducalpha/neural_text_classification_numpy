@@ -14,6 +14,7 @@ from collections import Counter
 import string
 
 DEFAULT_ENCODING = 'ISO-8859-1'
+MODEL_LATEST_FILE = 'model.latest.pkl'
 
 
 def clean_text(line):
@@ -405,6 +406,8 @@ class Trainer:
       print('Epoch: {}, avg loss: {:.6f}, train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(epoch, avg_loss,
                                                                                                     train_accuracy,
                                                                                                     validate_accuracy))
+      self.save_model('model.{}.pkl'.format(epoch))
+      self.save_model(MODEL_LATEST_FILE)
 
   def save_model(self, model_path: str):
     with open(model_path, 'wb') as f:
@@ -440,7 +443,6 @@ class Predictor:
 
 
 class TrainPredictManager:
-  MODEL_PATH = 'model.pkl'
   PREDICT_OUTPUT_PATH = Path('languageIdentificationPart1.output')
 
   def maybe_load_from_files(self, train_path: Path, dev_path: Path, test_path: Path,
@@ -469,12 +471,11 @@ class TrainPredictManager:
     if not test_only:
       trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=100, learning_rate=0.01,
                         batch_size=1)
-      trainer.fit(num_epochs=4)
-      trainer.save_model(self.MODEL_PATH)
+      trainer.fit(num_epochs=5)
 
     predictor = Predictor(label_vocab, char_vocab)
 
-    predictor.from_archive(self.MODEL_PATH)
+    predictor.from_archive(MODEL_LATEST_FILE)
     label_pred = predictor.predict(test_path)
     self.write_to_file(label_pred, self.PREDICT_OUTPUT_PATH)
     self.try_to_evaluate_test_result(test_path.parent / 'test_solutions', self.PREDICT_OUTPUT_PATH)
