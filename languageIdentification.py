@@ -43,6 +43,9 @@ class Vocab:
   def tokens_to_indexes(self, tokens: List[str]) -> np.ndarray:
     raise NotImplementedError
 
+  def indexes_to_tokens(self, indexes: Union[np.ndarray, List[int]]) -> List[str]:
+    return [self._index_to_token[idx] for idx in indexes]
+
   def to_one_hot_encodings(self, tokens: List[str]) -> np.ndarray:
     raise NotImplementedError
 
@@ -157,7 +160,7 @@ class TrainDevDatasetReader(DatasetReader):
           yield label, text
 
   @staticmethod
-  def read_data(file_path: Path, char_seq_len: int) -> Tuple[List[str], List[str]]:
+  def read_data(file_path: Path, char_seq_len: int = 5) -> Tuple[List[str], List[str]]:
     """Return 5-char-seqs and labels lists: ['abc', 'bcd'], ['ENGLISH', 'FRENCH']"""
     dataset_reader = TrainDevDatasetReader(file_path)
     charseq_label_pairs: List[Tuple[str, str]] = []
@@ -167,6 +170,14 @@ class TrainDevDatasetReader(DatasetReader):
     char_seq_array = [char_seq for char_seq, _ in charseq_label_pairs]
     label_array = [label for _, label in charseq_label_pairs]
     return char_seq_array, label_array
+
+  @staticmethod
+  def read_line(file_path: Path, char_seq_len: int = 5, need_clean_text=True) -> np.ndarray:
+    dataset_reader = TrainDevDatasetReader(file_path)
+    for label, text in dataset_reader.iter():
+      if need_clean_text:
+        text = clean_text(text)
+      yield list(DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len))
 
 
 class TestDatasetReader(DatasetReader):
@@ -178,13 +189,13 @@ class TestDatasetReader(DatasetReader):
         yield line
 
   @staticmethod
-  def read_line(file_path: Path, char_vocab: CharVocab,
-                char_seq_len: int = 5) -> np.ndarray:
+  def read_line(file_path: Path, char_seq_len: int = 5, need_clean_text=True) -> np.ndarray:
     """Return ndarray of char sequences of each line."""
     dataset_reader = TestDatasetReader(file_path)
     for text in dataset_reader.iter():
-      char_sequence_array = list(DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len))
-      yield char_sequence_array
+      if need_clean_text:
+        text = clean_text(text)
+      yield list(DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len))
 
 
 def sigmoid(x, derivative=False):
@@ -338,6 +349,8 @@ class Trainer:
                hidden_size: int = 100, learning_rate: float = 0.1, batch_size: int = 1, char_seq_len: int = 5):
     self._label_vocab = label_vocab
     self._char_vocab = char_vocab
+    self._train_path = train_path
+    self._dev_path = dev_path
 
     input_size = self._char_vocab.vocab_size * char_seq_len
     num_classes = self._label_vocab.vocab_size
@@ -403,11 +416,22 @@ class Trainer:
       avg_loss = total_loss / len(self._x_train)
       train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
       validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
-      print('Epoch: {}, avg loss: {:.6f}, train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(epoch, avg_loss,
-                                                                                                    train_accuracy,
-                                                                                                    validate_accuracy))
       self.save_model('model.{}.pkl'.format(epoch))
       self.save_model(MODEL_LATEST_FILE)
+
+      train_sent_accu = self.test(self._train_path)
+      validate_sent_accu = self.test(self._dev_path)
+      print('Epoch: {}, avg loss: {:.6f}, train_accuracy: {:.6f}, validate_accuracy: {:.6f},'
+            ' train sent-accu: {}, validate sent-accu: {}'.
+            format(epoch, avg_loss, train_accuracy, validate_accuracy,
+                   train_sent_accu, validate_sent_accu))
+
+  def test(self, file_path: Path):
+    predictor = Predictor(self._label_vocab, self._char_vocab)
+    predictor.from_archive(MODEL_LATEST_FILE)
+    label_true = [label for label, _ in TrainDevDatasetReader(file_path).iter()]
+    label_pred = predictor.predict(file_path)
+    return sklearn.metrics.accuracy_score(label_true, label_pred)
 
   def save_model(self, model_path: str):
     with open(model_path, 'wb') as f:
@@ -426,7 +450,9 @@ class Predictor:
 
   def predict(self, test_file_path: Path) -> List[str]:
     line_predictions = []
-    for line_batch in TestDatasetReader.read_line(test_file_path, char_vocab=self._char_vocab):
+    train_or_dev_file = test_file_path.name.startswith('dev') or test_file_path.name.startswith('train')
+    read_data_func = TrainDevDatasetReader.read_line if train_or_dev_file else TestDatasetReader.read_line
+    for line_batch in read_data_func(test_file_path):
       # line_batch contains an array of
       line_batch = self._char_vocab.to_one_hot_encodings(line_batch)
       probs = self._model.forward(line_batch)
@@ -468,21 +494,20 @@ class TrainPredictManager:
     label_vocab, char_vocab = self.maybe_load_from_files(train_path, dev_path, test_path,
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
-    if not test_only:
-      params = [(100, 0.1)]
-      if hypertune:
-        params = [(50, 0.1), (200, 0.1), (300, 0.1), (200, 0.01), (300, 0.01)]
-      for hidden_size, learning_rate in params:
-        trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=hidden_size, learning_rate=learning_rate,
+    params = [(100, 0.1)] if not hypertune else [(50, 0.1), (200, 0.1), (300, 0.1), (200, 0.01), (300, 0.01)]
+
+    for hidden_size, learning_rate in params:
+      if not test_only:
+        trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=hidden_size,
+                          learning_rate=learning_rate,
                           batch_size=1)
         trainer.fit(num_epochs=5)
 
-    # Testing.
-    predictor = Predictor(label_vocab, char_vocab)
-    predictor.from_archive(MODEL_LATEST_FILE)
-    label_pred = predictor.predict(test_path)
-    self.write_to_file(label_pred, self.PREDICT_OUTPUT_PATH)
-    self.try_to_evaluate_test_result(test_path.parent / 'test_solutions', self.PREDICT_OUTPUT_PATH)
+      predictor = Predictor(label_vocab, char_vocab)
+      predictor.from_archive(MODEL_LATEST_FILE)
+      label_pred = predictor.predict(test_path)
+      self.write_to_file(label_pred, self.PREDICT_OUTPUT_PATH)
+      self.try_to_evaluate_test_result(test_path.parent / 'test_solutions', self.PREDICT_OUTPUT_PATH)
 
   def run_with_torch(self, train_path, dev_path, test_path):
     label_vocab, char_vocab = self.maybe_load_from_files(train_path, dev_path, test_path,
@@ -503,7 +528,8 @@ class TrainPredictManager:
     x_dev = char_vocab.indexes_to_one_hot_encoding(x_dev)
     y_dev_one_hot_encoded = label_vocab.indexes_to_one_hot_encodings(y_dev)
 
-    model = Model(input_size=x_train.shape[1], hidden_size=50, num_classes=y_train_one_hot_encoded.shape[1], batch_size=1)
+    model = Model(input_size=x_train.shape[1], hidden_size=50, num_classes=y_train_one_hot_encoded.shape[1],
+                  batch_size=1)
     model.fit(x_train, y_train_one_hot_encoded, x_dev, y_dev_one_hot_encoded, num_epoch=4)
 
 
