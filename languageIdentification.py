@@ -8,11 +8,19 @@ import sklearn.utils
 import sklearn.metrics
 import pickle
 from collections import Counter
+import string
 
 DEFAULT_ENCODING = 'ISO-8859-1'
 
 
+def clean_text(line):
+  line = line.lower()
+  removed_chars = set(string.punctuation + ' ')
+  return ''.join([c for c in line if c not in removed_chars])
+
+
 def progress(count, total, status=''):
+  """from GitHub: https://gist.github.com/vladignatyev/06860ec2040cb497f0f3"""
   bar_len = 60
   filled_len = int(round(bar_len * count / float(total)))
 
@@ -20,7 +28,7 @@ def progress(count, total, status=''):
   bar = '=' * filled_len + '-' * (bar_len - filled_len)
 
   sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
-  sys.stdout.flush()  # As suggested by Rom Ruben (see: http://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console/27871113#comment50529068_27871113)
+  sys.stdout.flush()
 
 
 class Vocab:
@@ -134,12 +142,14 @@ class DatasetReader:
 
 
 class TrainDevDatasetReader(DatasetReader):
-  def iter(self) -> Tuple[str, str]:
+  def iter(self, need_clean_text: bool = True) -> Tuple[str, str]:
     with self._path.open(encoding=self._encoding) as f:
       for line in f:
         parts = line.split(maxsplit=1)
         if len(parts) == 2:
           label, text = parts
+          if need_clean_text:
+            text = clean_text(text)
           yield label, text
 
   @staticmethod
@@ -156,9 +166,11 @@ class TrainDevDatasetReader(DatasetReader):
 
 
 class TestDatasetReader(DatasetReader):
-  def iter(self) -> str:
+  def iter(self, need_clean_text: bool = True) -> str:
     with self._path.open(encoding=self._encoding) as f:
       for line in f:
+        if need_clean_text:
+          line = clean_text(line)
         yield line
 
   @staticmethod
@@ -348,7 +360,9 @@ class Trainer:
 
     self._model = Model(input_size, hidden_size, num_classes, learning_rate)
     self._batch_size = batch_size
-    print('Model: batch size: {}'.format(self._batch_size))
+    print('Train data size: {}'.format(len(self._x_train)))
+    print('Model: batch size: {}, input size:{}, hidden size: {}, learning rate: {}'
+          .format(self._batch_size, input_size, hidden_size, learning_rate))
 
   def fit(self, num_epochs: int = 3):
     train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
