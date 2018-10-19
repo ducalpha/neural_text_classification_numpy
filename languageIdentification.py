@@ -469,7 +469,7 @@ class TrainPredictManager:
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
     if not test_only:
-      trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=100, learning_rate=0.01,
+      trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=100, learning_rate=0.1,
                         batch_size=1)
       trainer.fit(num_epochs=5)
 
