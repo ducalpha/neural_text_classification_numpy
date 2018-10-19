@@ -199,8 +199,6 @@ class TestDatasetReader(DatasetReader):
     for text in dataset_reader.iter():
       if need_clean_text:
         text = clean_text(text)
-      if not text:
-        continue
       yield list(DatasetReader.get_char_sequences(text, char_seq_len=char_seq_len))
 
 
@@ -390,7 +388,10 @@ class Trainer:
   def fit(self, num_epochs: int = 3):
     train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
     validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
-    print('Epoch 0, train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(train_accuracy, validate_accuracy))
+    train_sent_accu = self.test(self._train_path)
+    validate_sent_accu = self.test(self._dev_path)
+    print('Epoch 0, train_accuracy: {:.6f}, validate_accuracy: {:.6f}, train sent-accu: {:.6f}, dev sent-accu: {:.6f}'
+          .format(train_accuracy, validate_accuracy, train_sent_accu, validate_sent_accu))
 
     for epoch in range(1, num_epochs + 1):
       print('Training epoch {}/{}'.format(epoch, num_epochs))
@@ -436,7 +437,8 @@ class Trainer:
     predictor = Predictor(self._label_vocab, self._char_vocab)
     predictor.from_archive(MODEL_LATEST_FILE)
     label_true = [label for label, _ in TrainDevDatasetReader(file_path).iter()]
-    label_pred = predictor.predict(file_path)
+    line_idxes, label_pred = predictor.predict(file_path)
+    label_true = [label_true[i] for i in line_idxes]
     return sklearn.metrics.accuracy_score(label_true, label_pred)
 
   def save_model(self, model_path: str):
@@ -454,11 +456,15 @@ class Predictor:
     with open(model_path, 'rb') as f:
       self._model = pickle.load(f)
 
-  def predict(self, test_file_path: Path) -> List[str]:
+  def predict(self, test_file_path: Path) -> Tuple[List[int], List[str]]:
     line_predictions = []
     train_or_dev_file = test_file_path.name.startswith('dev') or test_file_path.name.startswith('train')
     read_data_func = TrainDevDatasetReader.read_line if train_or_dev_file else TestDatasetReader.read_line
-    for line_batch in read_data_func(test_file_path):
+    line_idxes = []
+    for i, line_batch in enumerate(read_data_func(test_file_path)):
+      if not line_batch:
+        continue
+      line_idxes.append(i)
       # line_batch contains an array of
       line_batch = self._char_vocab.to_one_hot_encodings(line_batch)
       probs = self._model.forward(line_batch)
@@ -467,7 +473,7 @@ class Predictor:
       # preds: should be ['ENGLISH', 'ENGLISH', 'FRENCH']
       pred = Counter(preds).most_common()[0][0]
       line_predictions.append(pred)
-    return line_predictions
+    return line_idxes,  line_predictions
 
   def _decode(self, y_pred: np.ndarray) -> List[str]:
     """y_pred: array of indexes in labels."""
@@ -511,7 +517,7 @@ class TrainPredictManager:
 
       predictor = Predictor(label_vocab, char_vocab)
       predictor.from_archive(MODEL_LATEST_FILE)
-      label_pred = predictor.predict(test_path)
+      _, label_pred = predictor.predict(test_path)
       self.write_to_file(label_pred, self.PREDICT_OUTPUT_PATH)
       self.try_to_evaluate_test_result(test_path.parent / 'test_solutions', self.PREDICT_OUTPUT_PATH)
 
