@@ -505,12 +505,16 @@ class TrainPredictManager:
 
 if __name__ == '__main__':
   if len(sys.argv) < 4:
-    print('Usage: {} <train_path> <dev_path> <test_path> [only_test]'.format(sys.argv[0]))
+    print('Usage: {} <train_path> <dev_path> <test_path> [only_test] [cuda]'.format(sys.argv[0]))
     sys.exit(-1)
   train_path = Path(sys.argv[1])
   dev_path = Path(sys.argv[2])
   test_path = Path(sys.argv[3])
-  test_only = False if len(sys.argv) < 5 else True
+  test_only = len(sys.argv) >= 5 and sys.argv[4] == '1'
+  use_cuda = len(sys.argv) >= 6 and sys.argv[5] == 'cuda'
+
   train_predict_manager = TrainPredictManager()
-  train_predict_manager.run(train_path, dev_path, test_path, test_only=test_only)
-  # train_predict_manager.run_with_torch(train_path, dev_path, test_path)
+  if use_cuda:
+    train_predict_manager.run_with_torch(train_path, dev_path, test_path)
+  else:
+    train_predict_manager.run(train_path, dev_path, test_path, test_only=test_only)
