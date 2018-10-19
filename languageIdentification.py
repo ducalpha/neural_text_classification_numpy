@@ -1,5 +1,8 @@
 __author__ = 'Duc Bui (ducbui)'
 
+"""This implementation is capable of training with batches, so the forward/backward parts are
+more complex than in the assignment description."""
+
 from pathlib import Path
 import sys
 from typing import Dict, Tuple, List, Iterable, Any, Union, Optional
