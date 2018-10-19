@@ -341,7 +341,7 @@ class Trainer:
     data_train, label_train, data_dev, label_dev = \
       DatasetReader.load_data_maybe_from_disk(train_path, dev_path, char_seq_len)
     # shuffle the train data
-    data_train, label_train = sklearn.utils.shuffle(data_train, label_train)
+    data_train, label_train = sklearn.utils.shuffle(data_train, label_train, random_state=1024)
 
     self._x_train, self._y_train = self._char_vocab.tokens_to_indexes(data_train), \
                                    self._label_vocab.tokens_to_indexes(label_train)
@@ -484,7 +484,7 @@ class TrainPredictManager:
     data_train, label_train, data_dev, label_dev = \
       DatasetReader.load_data_maybe_from_disk(train_path, dev_path, char_seq_len=5)
     # shuffle the train data
-    data_train, label_train = sklearn.utils.shuffle(data_train, label_train)
+    data_train, label_train = sklearn.utils.shuffle(data_train, label_train, random_state=1024)
 
     x_train, y_train = char_vocab.tokens_to_indexes(data_train), label_vocab.tokens_to_indexes(label_train)
     x_dev, y_dev = char_vocab.tokens_to_indexes(data_dev), label_vocab.tokens_to_indexes(label_dev)
