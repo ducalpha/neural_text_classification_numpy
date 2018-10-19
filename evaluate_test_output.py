@@ -10,6 +10,8 @@ def read_output_file(output_file: Path, encoding: str = 'utf-8'):
     for line in f:
       ith, label = line.split()
       outputs.append(label)
+      if ith.startswith('Line'):
+        ith = ith[4:] # format: LineXXX
       assert int(ith) == len(outputs)
   return outputs
 

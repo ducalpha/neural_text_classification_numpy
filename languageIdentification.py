@@ -455,7 +455,7 @@ class TrainPredictManager:
 
   def write_to_file(self, label_pred: List[str], output_file_path: Path) -> None:
     with output_file_path.open('w') as f:
-      f.writelines('{} {}\n'.format(i + 1, label) for i, label in enumerate(label_pred))
+      f.writelines('Line{} {}\n'.format(i + 1, label) for i, label in enumerate(label_pred))
 
   def try_to_evaluate_test_result(self, test_path, pred_path):
     evaluation_module = 'evaluate_test_output'
@@ -464,11 +464,14 @@ class TrainPredictManager:
       from evaluate_test_output import compute_metrics
       compute_metrics(test_path, pred_path)
 
-  def run(self, train_path: Path, dev_path: Path, test_path: Path, test_only=False):
+  def run(self, train_path: Path, dev_path: Path, test_path: Path, test_only=False, hypertune=False):
     label_vocab, char_vocab = self.maybe_load_from_files(train_path, dev_path, test_path,
                                                          Path('label_vocab.pkl'), Path('char_vocab.pkl'))
 
     if not test_only:
+      params = [(100, 0.1)]
+      if hypertune:
+        params.extend([(150, 0.1), (200, 0.1), (300, 0.1), (200, 0.01), (300, 0.01)])
       trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=100, learning_rate=0.1,
                         batch_size=1)
       trainer.fit(num_epochs=5)
@@ -505,16 +508,17 @@ class TrainPredictManager:
 
 if __name__ == '__main__':
   if len(sys.argv) < 4:
-    print('Usage: {} <train_path> <dev_path> <test_path> [only_test] [cuda]'.format(sys.argv[0]))
+    print('Usage: {} <train_path> <dev_path> <test_path> [only_test] [cuda] hypertune'.format(sys.argv[0]))
     sys.exit(-1)
   train_path = Path(sys.argv[1])
   dev_path = Path(sys.argv[2])
   test_path = Path(sys.argv[3])
   test_only = len(sys.argv) >= 5 and sys.argv[4] == '1'
   use_cuda = len(sys.argv) >= 6 and sys.argv[5] == 'cuda'
+  hypertune = len(sys.argv) >= 6 and sys.argv[5] == 'cuda'
 
   train_predict_manager = TrainPredictManager()
   if use_cuda:
     train_predict_manager.run_with_torch(train_path, dev_path, test_path)
   else:
-    train_predict_manager.run(train_path, dev_path, test_path, test_only=test_only)
+    train_predict_manager.run(train_path, dev_path, test_path, test_only=test_only, hypertune=hypertune)
