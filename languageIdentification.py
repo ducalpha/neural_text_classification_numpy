@@ -370,9 +370,9 @@ class Trainer:
   def fit(self, num_epochs: int = 3):
     train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
     validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
-    print('Initial train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(train_accuracy, validate_accuracy))
+    print('Epoch 0, train_accuracy: {:.6f}, validate_accuracy: {:.6f}'.format(train_accuracy, validate_accuracy))
 
-    for epoch in range(num_epochs):
+    for epoch in range(1, num_epochs + 1):
       print('Training epoch {}/{}'.format(epoch, num_epochs))
       total_loss = 0
       for i, (x_batch, y_batch) in enumerate(
