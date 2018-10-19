@@ -471,13 +471,14 @@ class TrainPredictManager:
     if not test_only:
       params = [(100, 0.1)]
       if hypertune:
-        params.extend([(150, 0.1), (200, 0.1), (300, 0.1), (200, 0.01), (300, 0.01)])
-      trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=100, learning_rate=0.1,
-                        batch_size=1)
-      trainer.fit(num_epochs=5)
+        params = [(50, 0.1), (200, 0.1), (300, 0.1), (200, 0.01), (300, 0.01)]
+      for hidden_size, learning_rate in params:
+        trainer = Trainer(label_vocab, char_vocab, train_path, dev_path, hidden_size=hidden_size, learning_rate=learning_rate,
+                          batch_size=1)
+        trainer.fit(num_epochs=5)
 
+    # Testing.
     predictor = Predictor(label_vocab, char_vocab)
-
     predictor.from_archive(MODEL_LATEST_FILE)
     label_pred = predictor.predict(test_path)
     self.write_to_file(label_pred, self.PREDICT_OUTPUT_PATH)
@@ -515,7 +516,7 @@ if __name__ == '__main__':
   test_path = Path(sys.argv[3])
   test_only = len(sys.argv) >= 5 and sys.argv[4] == '1'
   use_cuda = len(sys.argv) >= 6 and sys.argv[5] == 'cuda'
-  hypertune = len(sys.argv) >= 6 and sys.argv[5] == 'cuda'
+  hypertune = len(sys.argv) >= 7 and sys.argv[6] == 'hypertune'
 
   train_predict_manager = TrainPredictManager()
   if use_cuda:
