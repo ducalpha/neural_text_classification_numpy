@@ -1,0 +1,41 @@
+Author: Duc Bui (ducbui)
+
+[Part 1]
+i) I used the neural network to identify the probable language of an individual sentence:
+by using the majority vote of the language predictions of each 5c-sequence of characters, 
+i.e., output the language which has the most predictions at the 5c-level.
+
+ii) Accuracy of my language classifier (at the sentence level, after 5 epochs):
+Train accuracy: 99.05%, dev accuracy: 99.30%, test accuracy: 99.33%
+
+[Part 2]
+i) I decided which sets of hyperparameters to try by increasing the hidden size a little more,
+because the train and dev accuracy at hidden size = 100 and learning rate = 0.1 is similar and still low,
+which indicates that my classifier has not overfitted, I tried bigger hidden sizes (with different learning rates
+to make sure the classifier will not diverge). However, I don't want to try too big hidden sizes because the
+training time will be prohibitively high.
+
+ii) A list of the sets of hyperparameters that I tried on the dev data (hidden size, learning rate):
+(50, 0.1), (150, 0.1), (200, 0.1), (150, 0.01), (200, 0.01)
+
+iii) Results of the hyperparameters (including part 1, after 5 epochs):
+Hyperparameter: (100, 0.1)
+Train accuracy: 0.762989, dev accuracy: 0.752479
+Hyperparameter: (50, 0.1)
+Train accuracy: 0.736860, dev accuracy: 0.730393
+Hyperparameter: (150, 0.1)
+Train accuracy: 0.759347, dev accuracy: 0.748823
+Hyperparameter: (200, 0.1)
+Train accuracy: 0.763872, dev accuracy: 0.754519
+Hyperparameter: (150, 0.01)
+Train accuracy: 0.724964, dev accuracy: 0.719566
+Hyperparameter: (200, 0.01)
+Train accuracy: 0.728253, dev accuracy: 0.721900
+
+The best performing set of hyperparameters (as determined by the dev data): (200, 0.1)
+
+iv) Accuracy of your best language identifier (measured on the test data): 99.00%
+
+
+
+
