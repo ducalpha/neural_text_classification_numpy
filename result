@@ -1,0 +1,97 @@
+Read data from original data files...
+Done reading data from original data files
+Train data size: 998903
+Model: batch size: 1, input size:405, hidden size: 100, learning rate: 0.1
+Epoch 0, train_accuracy: 0.348928, validate_accuracy: 0.358492, train sent-accu: 0.987378, dev sent-accu: 0.984985
+Training epoch 1/5
+Epoch: 1, avg loss: 0.231068, train_accuracy: 0.696461, validate_accuracy: 0.691182, train sent-accu: 0.9482225656877898, validate sent-accu: 0.9459459459459459
+Training epoch 2/5
+Epoch: 2, avg loss: 0.189294, train_accuracy: 0.731214, validate_accuracy: 0.724380, train sent-accu: 0.9840288511076765, validate sent-accu: 0.977977977977978
+Training epoch 3/5
+Epoch: 3, avg loss: 0.178952, train_accuracy: 0.749124, validate_accuracy: 0.740307, train sent-accu: 0.9885368366821227, validate sent-accu: 0.986986986986987
+Training epoch 4/5
+Epoch: 4, avg loss: 0.173563, train_accuracy: 0.758442, validate_accuracy: 0.748568, train sent-accu: 0.990726429675425, validate sent-accu: 0.98998998998999
+Training epoch 5/5
+Epoch: 5, avg loss: 0.170244, train_accuracy: 0.762989, validate_accuracy: 0.752479, train sent-accu: 0.9905976300875837, validate sent-accu: 0.992992992992993
+Testing accuracy: 0.9933333333333333
+
+Read data from original data files...
+Done reading data from original data files
+Train data size: 998903
+Model: batch size: 1, input size:405, hidden size: 50, learning rate: 0.1
+Epoch 0, train_accuracy: 0.344938, validate_accuracy: 0.326677, train sent-accu: 0.990598, dev sent-accu: 0.992993
+Training epoch 1/5
+Epoch: 1, avg loss: 0.229964, train_accuracy: 0.698420, validate_accuracy: 0.692789, train sent-accu: 0.9670273055126224, validate sent-accu: 0.964964964964965
+Training epoch 2/5
+Epoch: 2, avg loss: 0.197245, train_accuracy: 0.719108, validate_accuracy: 0.713322, train sent-accu: 0.9759144770736734, validate sent-accu: 0.9719719719719719
+Training epoch 3/5
+Epoch: 3, avg loss: 0.189919, train_accuracy: 0.727856, validate_accuracy: 0.721629, train sent-accu: 0.9804224626481195, validate sent-accu: 0.9769769769769769
+Training epoch 4/5
+Epoch: 4, avg loss: 0.186160, train_accuracy: 0.733268, validate_accuracy: 0.726382, train sent-accu: 0.9829984544049459, validate sent-accu: 0.984984984984985
+Training epoch 5/5
+Epoch: 5, avg loss: 0.183693, train_accuracy: 0.736860, validate_accuracy: 0.730393, train sent-accu: 0.9845440494590417, validate sent-accu: 0.986986986986987
+Testing accuracy: 0.9766666666666667
+Read data from original data files...
+Done reading data from original data files
+Train data size: 998903
+Model: batch size: 1, input size:405, hidden size: 150, learning rate: 0.1
+Epoch 0, train_accuracy: 0.346213, validate_accuracy: 0.325843, train sent-accu: 0.984544, dev sent-accu: 0.986987
+Training epoch 1/5
+Epoch: 1, avg loss: 0.253035, train_accuracy: 0.693927, validate_accuracy: 0.691035, train sent-accu: 0.9556929417825863, validate sent-accu: 0.9469469469469469
+Training epoch 2/5
+Epoch: 2, avg loss: 0.195643, train_accuracy: 0.736005, validate_accuracy: 0.730547, train sent-accu: 0.9862184441009789, validate sent-accu: 0.982982982982983
+Training epoch 3/5
+Epoch: 3, avg loss: 0.183196, train_accuracy: 0.750106, validate_accuracy: 0.742749, train sent-accu: 0.985445646573931, validate sent-accu: 0.980980980980981
+Training epoch 4/5
+Epoch: 4, avg loss: 0.176464, train_accuracy: 0.753826, validate_accuracy: 0.744790, train sent-accu: 0.9848016486347244, validate sent-accu: 0.97997997997998
+Training epoch 5/5
+Epoch: 5, avg loss: 0.172081, train_accuracy: 0.759347, validate_accuracy: 0.748823, train sent-accu: 0.9869912416280268, validate sent-accu: 0.982982982982983
+Testing accuracy: 0.99
+Read data from original data files...
+Done reading data from original data files
+Train data size: 998903
+Model: batch size: 1, input size:405, hidden size: 200, learning rate: 0.1
+Epoch 0, train_accuracy: 0.335102, validate_accuracy: 0.325348, train sent-accu: 0.986991, dev sent-accu: 0.982983
+Training epoch 1/5
+Epoch: 1, avg loss: 0.278454, train_accuracy: 0.694846, validate_accuracy: 0.691576, train sent-accu: 0.9587841318907779, validate sent-accu: 0.960960960960961
+Training epoch 2/5
+Epoch: 2, avg loss: 0.199408, train_accuracy: 0.724475, validate_accuracy: 0.717464, train sent-accu: 0.9699896960329727, validate sent-accu: 0.973973973973974
+Training epoch 3/5
+Epoch: 3, avg loss: 0.184605, train_accuracy: 0.741584, validate_accuracy: 0.733453, train sent-accu: 0.9832560535806285, validate sent-accu: 0.9819819819819819
+Training epoch 4/5
+Epoch: 4, avg loss: 0.176891, train_accuracy: 0.757032, validate_accuracy: 0.748785, train sent-accu: 0.9895672333848532, validate sent-accu: 0.988988988988989
+Training epoch 5/5
+Epoch: 5, avg loss: 0.171607, train_accuracy: 0.763872, validate_accuracy: 0.754519, train sent-accu: 0.990340030911901, validate sent-accu: 0.987987987987988
+Testing accuracy: 0.99
+Read data from original data files...
+Done reading data from original data files
+Train data size: 998903
+Model: batch size: 1, input size:405, hidden size: 150, learning rate: 0.01
+Epoch 0, train_accuracy: 0.346213, validate_accuracy: 0.325843, train sent-accu: 0.990340, dev sent-accu: 0.987988
+Training epoch 1/5
+Epoch: 1, avg loss: 0.289778, train_accuracy: 0.622825, validate_accuracy: 0.621438, train sent-accu: 0.8768675940236991, validate sent-accu: 0.8638638638638638
+Training epoch 2/5
+Epoch: 2, avg loss: 0.228391, train_accuracy: 0.672359, validate_accuracy: 0.668331, train sent-accu: 0.9648377125193199, validate sent-accu: 0.95995995995996
+Training epoch 3/5
+Epoch: 3, avg loss: 0.211444, train_accuracy: 0.695693, validate_accuracy: 0.691599, train sent-accu: 0.9755280783101494, validate sent-accu: 0.9719719719719719
+Training epoch 4/5
+Epoch: 4, avg loss: 0.200602, train_accuracy: 0.712855, validate_accuracy: 0.708129, train sent-accu: 0.9802936630602782, validate sent-accu: 0.975975975975976
+Training epoch 5/5
+Epoch: 5, avg loss: 0.193050, train_accuracy: 0.724964, validate_accuracy: 0.719566, train sent-accu: 0.98145285935085, validate sent-accu: 0.97997997997998
+Testing accuracy: 0.9666666666666667
+Read data from original data files...
+Done reading data from original data files
+Train data size: 998903
+Model: batch size: 1, input size:405, hidden size: 200, learning rate: 0.01
+Epoch 0, train_accuracy: 0.335102, validate_accuracy: 0.325348, train sent-accu: 0.981453, dev sent-accu: 0.979980
+Training epoch 1/5
+Epoch: 1, avg loss: 0.275632, train_accuracy: 0.640380, validate_accuracy: 0.637242, train sent-accu: 0.9502833590932509, validate sent-accu: 0.9519519519519519
+Training epoch 2/5
+Epoch: 2, avg loss: 0.226856, train_accuracy: 0.679600, validate_accuracy: 0.675618, train sent-accu: 0.96973209685729, validate sent-accu: 0.970970970970971
+Training epoch 3/5
+Epoch: 3, avg loss: 0.209694, train_accuracy: 0.700681, validate_accuracy: 0.696012, train sent-accu: 0.975785677485832, validate sent-accu: 0.973973973973974
+Training epoch 4/5
+Epoch: 4, avg loss: 0.198532, train_accuracy: 0.716194, validate_accuracy: 0.710401, train sent-accu: 0.9769448737764039, validate sent-accu: 0.972972972972973
+Training epoch 5/5
+Epoch: 5, avg loss: 0.190605, train_accuracy: 0.728253, validate_accuracy: 0.721900, train sent-accu: 0.9791344667697064, validate sent-accu: 0.974974974974975
+Testing accuracy: 0.97

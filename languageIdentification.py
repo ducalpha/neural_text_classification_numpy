@@ -247,10 +247,10 @@ class Model:
   def __init__(self, input_size: int, hidden_size: int, num_classes: int, learning_rate: float = 0.1):
     # Weights
     np.random.seed(1024)
-    self._W1: np.ndarray = np.random.random((input_size, hidden_size))  # each weight for 1 input = 1 column
-    self._W2: np.ndarray = np.random.random((hidden_size, num_classes))
-    self._b1: np.ndarray = np.random.random(hidden_size)
-    self._b2: np.ndarray = np.random.random(num_classes)
+    self._W1: np.ndarray = np.random.randn(input_size, hidden_size)  # each weight for 1 input = 1 column
+    self._W2: np.ndarray = np.random.randn(hidden_size, num_classes)
+    self._b1: np.ndarray = np.random.randn(hidden_size)
+    self._b2: np.ndarray = np.random.randn(num_classes)
     self._h: np.ndarray = None  # intermediate reults
     self._input_size = input_size
     self._hidden_size = hidden_size
