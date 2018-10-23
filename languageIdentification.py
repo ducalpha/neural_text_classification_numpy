@@ -388,8 +388,8 @@ class Trainer:
   def fit(self, num_epochs: int = 3):
     train_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_train, self._y_train)
     validate_accuracy = self._model.evaluate(self._char_vocab, self._label_vocab, self._x_dev, self._y_dev)
-    train_sent_accu = self.test(self._train_path)
-    validate_sent_accu = self.test(self._dev_path)
+    train_sent_accu = self.test(self._train_path, restore_model=False)
+    validate_sent_accu = self.test(self._dev_path, restore_model=False)
     print('Epoch 0, train_accuracy: {:.6f}, validate_accuracy: {:.6f}, train sent-accu: {:.6f}, dev sent-accu: {:.6f}'
           .format(train_accuracy, validate_accuracy, train_sent_accu, validate_sent_accu))
 
@@ -433,9 +433,12 @@ class Trainer:
             format(epoch, avg_loss, train_accuracy, validate_accuracy,
                    train_sent_accu, validate_sent_accu))
 
-  def test(self, file_path: Path):
+  def test(self, file_path: Path, restore_model=True):
     predictor = Predictor(self._label_vocab, self._char_vocab)
-    predictor.from_archive(MODEL_LATEST_FILE)
+    if restore_model:
+      predictor.from_archive(MODEL_LATEST_FILE)
+    else:
+      predictor._model = self._model
     label_true = [label for label, _ in TrainDevDatasetReader(file_path).iter()]
     line_idxes, label_pred = predictor.predict(file_path)
     label_true = [label_true[i] for i in line_idxes]

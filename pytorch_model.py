@@ -97,8 +97,11 @@ class Model:
     X_train, y_train = torch.from_numpy(X_train).float().cuda(), torch.from_numpy(y_train).float().cuda()
     X_dev, y_dev = torch.from_numpy(X_dev).float().cuda(), torch.from_numpy(y_dev).float().cuda()
 
-    # Batch is the whole data.
-    for epoch in range(num_epoch):
+    train_accuracy = self._eval(X_train, y_train)
+    validate_accuracy = self._eval(X_dev, y_dev)
+    print('Epoch: 0, train_accuracy: {}, validate_accuracy: {}'.format(train_accuracy, validate_accuracy))
+
+    for epoch in range(1, num_epoch + 1):
       total_loss = 0
       for i, (x_batch, y_batch) in enumerate(DataHelper.batch_iter(X_train, y_train, self._batch_size, 1)):
         loss = self._train(x_batch, y_batch)
