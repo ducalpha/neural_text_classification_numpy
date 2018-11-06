@@ -1,7 +1,10 @@
 Author: Duc Bui (ducbui)
 
 [Part 1]
-i) I used the neural network to identify the probable language of an individual sentence:
+i) I used the neural network to identify the probable language of an individual sentence as follows:
+First, I preprocess the text by removing the punctuations which reduce the encoding space.
+The I break the long sentence into 5-character sequences and encoding them using the one-hot encoding.
+After training on the dataset, I predict the the probable language of an individual sentence
 by using the majority vote of the language predictions of each 5c-sequence of characters, 
 i.e., output the language which has the most predictions at the 5c-level.
 
@@ -34,7 +37,7 @@ Train accuracy: 0.728253, dev accuracy: 0.721900
 
 The best performing set of hyperparameters (as determined by the dev data): (200, 0.1)
 
-iv) Accuracy of your best language identifier (measured on the test data): 99.00%
+iv) Accuracy of my best language identifier (measured on the test data): 99.00%
 
 
 

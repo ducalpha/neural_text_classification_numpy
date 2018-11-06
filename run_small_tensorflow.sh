@@ -1,0 +1,1 @@
+python languageIdentification.py languageIdentification.data/train_small languageIdentification.data/dev_small languageIdentification.data/test 0 tensorflow
