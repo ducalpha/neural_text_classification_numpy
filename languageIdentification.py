@@ -18,6 +18,10 @@ DEFAULT_ENCODING = 'ISO-8859-1'
 MODEL_LATEST_FILE = 'model.latest.pkl'
 
 
+def ewma(beta: float, current_val: float, new_val: float):
+    return beta * current_val + (1 - beta) * new_val
+
+
 def clean_text(line):
     line = line.lower()
     removed_chars = set(string.punctuation + ' ')
@@ -257,12 +261,18 @@ class Model:
         self._hidden_size = hidden_size
         self._num_classes: int = num_classes
         self._lr: float = learning_rate
+        self._beta: float = 0.9  # Gradient descent with momentum
 
         # Gradients.
         self._delta_W1_L: np.ndarray = None
         self._delta_b1_L: np.ndarray = None
         self._delta_W2_L: np.ndarray = None
         self._delta_b2_L: np.ndarray = None
+
+        self._ewma_delta_W1_L: np.ndarray = None
+        self._ewma_delta_b1_L: np.ndarray = None
+        self._ewma_delta_W2_L: np.ndarray = None
+        self._ewma_delta_b2_L: np.ndarray = None
 
     def loss(self, y, y_pred):
         output = np.zeros((y.shape[0]))
@@ -329,10 +339,17 @@ class Model:
 
     def step(self):
         # Descent following the gradients.
-        self._W1 -= self._lr * self._delta_W1_L
-        self._b1 -= self._lr * self._delta_b1_L
-        self._W2 -= self._lr * self._delta_W2_L
-        self._b2 -= self._lr * self._delta_b2_L
+        self._ewma_delta_W1_L = ewma(beta, self._ewma_delta_W1_L, self._delta_W1_L)
+        self._W1 -= self._lr * self._ewma_delta_W1_L
+
+        self._ewma_delta_b1_L = ewma(beta, self._ewma_delta_b1_L, self._delta_b1_L)
+        self._b1 -= self._lr * self._ewma_delta_b1_L
+
+        self._ewma_delta_W2_L = ewma(beta, self._ewma_delta_W2_L, self._delta_W2_L)
+        self._W2 -= self._lr * self._ewma_delta_W2_L
+
+        self._ewma_delta_b2_L = ewma(beta, self._ewma_delta_b2_L, self._delta_b2_L)
+        self._b2 -= self._lr * self._ewma_delta_b2_L
 
     def decode(self, probs: np.ndarray) -> np.ndarray:
         """From probabilities like [0.9, 0.1, 0] to predictions (0, 1, 2)"""
